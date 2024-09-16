@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Scanner PowerShell Script Documentation</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto+Mono:wght@300;400;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #00ff00;
+            --secondary-color: #0a0a0a;
+            --text-color: #00ff00;
+            --bg-color: #000000;
+            --card-bg: #0a0a0a;
+            --glow-color: #00ff00;
+        }
+
+        body {
+            font-family: 'Roboto Mono', monospace;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 0;
+            transition: background-color 0.3s ease;
+            cursor: none;
+            overflow-x: hidden;
+        }
+
+        .background-layer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+
+        #matrix-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        #circuit-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+            position: relative;
+            z-index: 1;
+        }
+
+        h1,
+        h2,
+        h3 {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--primary-color);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            text-align: center;
+            margin-bottom: 40px;
+            text-shadow: 0 0 10px var(--glow-color);
+        }
+
+        code {
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            padding: 2px 4px;
+            font-family: 'Courier New', monospace;
+        }
+
+        pre {
+            background-color: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+            overflow-x: auto;
+            position: relative;
+        }
+
+        pre::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            border-radius: 8px 8px 0 0;
+        }
+
+        table {
+            border-collapse: separate;
+            border-spacing: 0;
+            width: 100%;
+            margin-bottom: 20px;
+            overflow: hidden;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            background-color: rgba(0, 0, 0, 0.6);
+        }
+
+        th,
+        td {
+            padding: 15px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        th {
+            background-color: var(--secondary-color);
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .example {
+            background-color: rgba(10, 10, 10, 0.8);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .example::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(to bottom right,
+                    rgba(0, 255, 0, 0.1) 0%,
+                    rgba(0, 255, 0, 0.05) 25%,
+                    transparent 50%);
+            transform: rotate(45deg);
+            pointer-events: none;
+        }
+
+        .example:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.4);
+        }
+
+        .toggle-btn,
+        .load-btn,
+        .copy-btn {
+            background-color: var(--secondary-color);
+            color: var(--primary-color);
+            border: 1px solid var(--primary-color);
+            padding: 12px 24px;
+            cursor: pointer;
+            border-radius: 30px;
+            font-size: 1em;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
+            margin-right: 10px;
+        }
+
+        .toggle-btn:hover,
+        .load-btn:hover,
+        .copy-btn:hover {
+            background-color: var(--primary-color);
+            color: var(--secondary-color);
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.4);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        @keyframes glitch {
+            0% {
+                text-shadow: 0.05em 0 0 rgba(255, 0, 0, 0.75), -0.05em -0.025em 0 rgba(0, 255, 0, 0.75), 0.025em 0.05em 0 rgba(0, 0, 255, 0.75);
+            }
+
+            14% {
+                text-shadow: 0.05em 0 0 rgba(255, 0, 0, 0.75), -0.05em -0.025em 0 rgba(0, 255, 0, 0.75), 0.025em 0.05em 0 rgba(0, 0, 255, 0.75);
+            }
+
+            15% {
+                text-shadow: -0.05em -0.025em 0 rgba(255, 0, 0, 0.75), 0.025em 0.025em 0 rgba(0, 255, 0, 0.75), -0.05em -0.05em 0 rgba(0, 0, 255, 0.75);
+            }
+
+            49% {
+                text-shadow: -0.05em -0.025em 0 rgba(255, 0, 0, 0.75), 0.025em 0.025em 0 rgba(0, 255, 0, 0.75), -0.05em -0.05em 0 rgba(0, 0, 255, 0.75);
+            }
+
+            50% {
+                text-shadow: 0.025em 0.05em 0 rgba(255, 0, 0, 0.75), 0.05em 0 0 rgba(0, 255, 0, 0.75), 0 -0.05em 0 rgba(0, 0, 255, 0.75);
+            }
+
+            99% {
+                text-shadow: 0.025em 0.05em 0 rgba(255, 0, 0, 0.75), 0.05em 0 0 rgba(0, 255, 0, 0.75), 0 -0.05em 0 rgba(0, 0, 255, 0.75);
+            }
+
+            100% {
+                text-shadow: -0.025em 0 0 rgba(255, 0, 0, 0.75), -0.025em -0.025em 0 rgba(0, 255, 0, 0.75), -0.025em -0.05em 0 rgba(0, 0, 255, 0.75);
+            }
+        }
+
+        .glow {
+            animation: glitch 1s linear infinite;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            font-size: 0.8em;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+                margin: 10px;
+                width: calc(100% - 20px);
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+
+            table,
+            tr,
+            td {
+                display: block;
+            }
+
+            th {
+                display: none;
+            }
+
+            td {
+                position: relative;
+                padding-left: 50%;
+            }
+
+            td:before {
+                content: attr(data-label);
+                position: absolute;
+                left: 6px;
+                width: 45%;
+                padding-right: 10px;
+                white-space: nowrap;
+                font-weight: bold;
+            }
+
+            .example {
+                padding: 10px;
+            }
+
+            .copy-btn {
+                position: static;
+                margin-top: 10px;
+                display: block;
+                width: 100%;
+            }
+        }
+
+        #custom-cursor {
+            position: fixed;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--primary-color);
+            border-radius: 50%;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            z-index: 9999;
+            transition: width 0.3s, height 0.3s;
+        }
+
+        #custom-cursor::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 5px;
+            height: 5px;
+            background-color: var(--primary-color);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Custom context menu styles */
+        .custom-context-menu {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            background-color: var(--secondary-color);
+            border: 1px solid var(--primary-color);
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+        }
+
+        .custom-context-menu ul {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .custom-context-menu li {
+            padding: 10px 20px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .custom-context-menu li:hover {
+            background-color: var(--primary-color);
+            color: var(--secondary-color);
+        }
+
+        /* Theme toggle styles */
+        #theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            transition: transform 0.3s ease-in-out;
+        }
+
+        #theme-toggle.floating {
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(0px) rotate(0deg);
+            }
+
+            50% {
+                transform: translateY(-10px) rotate(5deg);
+            }
+
+            100% {
+                transform: translateY(0px) rotate(0deg);
+            }
+        }
+
+        .theme-switch {
+            display: none;
+        }
+
+        .theme-switch-label {
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+            background-color: #2b2b2b;
+            border-radius: 17px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
+        }
+
+        .theme-switch-inner {
+            display: block;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background-color: #00ff00;
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        }
+
+        .theme-switch:checked+.theme-switch-label .theme-switch-inner {
+            transform: translateX(26px);
+            background-color: #4a90e2;
+        }
+
+        /* Carbon dark theme */
+        body.carbon-theme {
+            --primary-color: #4a90e2;
+            --secondary-color: #2c3e50;
+            --text-color: #ecf0f1;
+            --bg-color: #1a1a1a;
+            --card-bg: #2c3e50;
+            --glow-color: #4a90e2;
+        }
+
+        body.carbon-theme .background-layer {
+            background-color: rgba(26, 26, 26, 0.8);
+        }
+
+        body.carbon-theme #matrix-canvas {
+            opacity: 0.1;
+        }
+
+        body.carbon-theme .container {
+            background-color: rgba(44, 62, 80, 0.7);
+        }
+
+        body.carbon-theme .example {
+            background-color: rgba(52, 73, 94, 0.8);
+        }
+
+        body.carbon-theme .toggle-btn,
+        body.carbon-theme .load-btn,
+        body.carbon-theme .copy-btn {
+            background-color: #34495e;
+            color: #4a90e2;
+            border-color: #4a90e2;
+        }
+
+        body.carbon-theme .toggle-btn:hover,
+        body.carbon-theme .load-btn:hover,
+        body.carbon-theme .copy-btn:hover {
+            background-color: #4a90e2;
+            color: #34495e;
+        }
+
+        body.carbon-theme #custom-cursor {
+            border-color: #4a90e2;
+        }
+
+        body.carbon-theme #custom-cursor::after {
+            background-color: #4a90e2;
+        }
+
+        body.carbon-theme .custom-context-menu {
+            background-color: #34495e;
+            border-color: #4a90e2;
+        }
+
+        body.carbon-theme .custom-context-menu li:hover {
+            background-color: #4a90e2;
+            color: #34495e;
+        }
+
+        /* Add these new styles for the particle animation */
+        #particles-js {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: -1;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        body.carbon-theme #particles-js {
+            opacity: 1;
+        }
+
+        body.carbon-theme #matrix-canvas {
+            opacity: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="background-layer"></div>
+    <canvas id="matrix-canvas"></canvas>
+    <div id="particles-js"></div>
+    <div id="custom-cursor"></div>
+    <div id="theme-toggle">
+        <input type="checkbox" id="theme-switch" class="theme-switch">
+        <label for="theme-switch" class="theme-switch-label">
+            <span class="theme-switch-inner"></span>
+            <span class="theme-switch-switch"></span>
+        </label>
+    </div>
+    <div class="container">
+        <h1 class="glow">Network Scanner PowerShell Script Documentation</h1>
+
+        <h2>Synopsis</h2>
+        <p>This PowerShell script performs network scanning on specified CIDR ranges, offering various customization
+            options and output formats.</p>
+
+        <h2>Description</h2>
+        <p>The script conducts network scans based on provided CIDR notations. It supports multiple CIDR inputs,
+            customizable ping settings, port scanning, DNS resolution, and various output options. The script is
+            designed for network administrators and security professionals to efficiently scan and analyze network
+            environments.</p>
+
+        <h2>Parameters</h2>
+        <table>
+            <tr>
+                <th>Parameter</th>
+                <th>Description</th>
+                <th>Required</th>
+                <th>Default</th>
+            </tr>
+            <tr>
+                <td><code>CIDR</code></td>
+                <td>CIDR notation(s) to scan. Can be a single CIDR or an array.</td>
+                <td>Yes</td>
+                <td>N/A</td>
+            </tr>
+            <tr>
+                <td><code>PingCount</code></td>
+                <td>Number of ping attempts per host.</td>
+                <td>No</td>
+                <td>1</td>
+            </tr>
+            <tr>
+                <td><code>Timeout</code></td>
+                <td>Timeout in milliseconds for each ping attempt.</td>
+                <td>No</td>
+                <td>1000</td>
+            </tr>
+            <tr>
+                <td><code>ShowAll</code></td>
+                <td>If set, shows results for all hosts, not just alive ones.</td>
+                <td>No</td>
+                <td>False</td>
+            </tr>
+            <tr>
+                <td><code>ExportCSV</code></td>
+                <td>Path to export results as CSV.</td>
+                <td>No</td>
+                <td>N/A</td>
+            </tr>
+            <tr>
+                <td><code>HostThrottleLimit</code></td>
+                <td>Maximum number of concurrent host scans.</td>
+                <td>No</td>
+                <td>100</td>
+            </tr>
+            <tr>
+                <td><code>PortThrottleLimit</code></td>
+                <td>Maximum number of concurrent port scans per host.</td>
+                <td>No</td>
+                <td>50</td>
+            </tr>
+            <tr>
+                <td><code>ResolveDNS</code></td>
+                <td>Attempts to resolve DNS names for alive hosts.</td>
+                <td>No</td>
+                <td>False</td>
+            </tr>
+            <tr>
+                <td><code>Ports</code></td>
+                <td>Array of specific ports to scan.</td>
+                <td>No</td>
+                <td>N/A</td>
+            </tr>
+            <tr>
+                <td><code>TopPorts</code></td>
+                <td>Scan top N most common ports. Values: 10, 20, 30, 40, 50.</td>
+                <td>No</td>
+                <td>N/A</td>
+            </tr>
+            <tr>
+                <td><code>LogFile</code></td>
+                <td>Path to the log file.</td>
+                <td>No</td>
+                <td>.\scan_log.txt</td>
+            </tr>
+            <tr>
+                <td><code>OutputFormat</code></td>
+                <td>Output format for results. Values: "CSV", "JSON", "XML".</td>
+                <td>No</td>
+                <td>"CSV"</td>
+            </tr>
+            <tr>
+                <td><code>Exclude</code></td>
+                <td>Array of IP addresses or subnets to exclude from scan.</td>
+                <td>No</td>
+                <td>N/A</td>
+            </tr>
+            <tr>
+                <td><code>UseTcpSyn</code></td>
+                <td>Uses TCP SYN packets for host discovery.</td>
+                <td>No</td>
+                <td>False</td>
+            </tr>
+            <tr>
+                <td><code>NetworkInterface</code></td>
+                <td>Network interface to use for the scan.</td>
+                <td>No</td>
+                <td>N/A</td>
+            </tr>
+        </table>
+
+        <h2>Usage Examples</h2>
+        <div class="example">
+            <h3>1. Basic scan of a single CIDR range:</h3>
+            <pre><code>.\scanner.ps1 -CIDR "192.168.1.0/24"</code></pre>
+            <p>Performs a basic scan on the specified CIDR range.</p>
+        </div>
+
+        <div class="example">
+            <h3>2. Scan multiple CIDR ranges:</h3>
+            <pre><code>.\scanner.ps1 -CIDR "192.168.1.0/24","10.0.0.0/16"</code></pre>
+            <p>Scans multiple CIDR ranges in a single execution.</p>
+        </div>
+
+        <div class="example">
+            <h3>3. Customize ping settings:</h3>
+            <pre><code>.\scanner.ps1 -CIDR "192.168.1.0/24" -PingCount 3 -Timeout 500</code></pre>
+            <p>Adjusts the number of ping attempts and timeout for each host.</p>
+        </div>
+
+        <div class="example">
+            <h3>4. Show all hosts (including non-responsive ones):</h3>
+            <pre><code>.\scanner.ps1 -CIDR "192.168.1.0/24" -ShowAll</code></pre>
+            <p>Displays results for all hosts, not just the responsive ones.</p>
+        </div>
+
+        <div class="example">
+            <h3>5. Export results to CSV:</h3>
+            <pre><code>.\scanner.ps1 -CIDR "192.168.1.0/24" -ExportCSV "C:\results.csv"</code></pre>
+            <p>Saves the scan results to a CSV file at the specified path.</p>
+        </div>
+
+        <div class="example">
+            <h3>6. Adjust concurrency limits:</h3>
+            <pre><code>.\scanner.ps1 -CIDR "192.168.1.0/24" -HostThrottleLimit 50 -PortThrottleLimit 25</code></pre>
+            <p>Sets custom limits for concurrent host and port scanning operations.</p>
+        </div>
+
+        <div class="example">
+            <h3>7. Resolve DNS names:</h3>
+            <pre><code>.\scanner.ps1 -CIDR "192.168.1.0/24" -ResolveDNS</code></pre>
+            <p>Attempts to resolve DNS names for responsive hosts.</p>
+        </div>
+
+        <div class="example">
+            <h3>8. Scan specific ports:</h3>
+            <pre><code>.\scanner.ps1 -CIDR "192.168.1.0/24" -Ports 80,443,3389</code></pre>
+            <p>Scans the specified ports on responsive hosts.</p>
+        </div>
+
+        <div class="example">
+            <h3>9. Scan top N most common ports:</h3>
+            <pre><code>.\scanner.ps1 -CIDR "192.168.1.0/24" -TopPorts 20</code></pre>
+            <p>Scans the top 20 most common ports on responsive hosts.</p>
+        </div>
+
+        <div class="example">
+            <h3>10. Use a custom log file:</h3>
+            <pre><code>.\scanner.ps1 -CIDR "192.168.1.0/24" -LogFile "C:\custom_scan_log.txt"</code></pre>
+            <p>Specifies a custom path for the scan log file.</p>
+        </div>
+
+        <div class="example">
+            <h3>11. Change output format:</h3>
+            <pre><code>.\scanner.ps1 -CIDR "192.168.1.0/24" -OutputFormat "JSON"</code></pre>
+            <p>Changes the output format of the results to JSON.</p>
+        </div>
+
+        <div class="example">
+            <h3>12. Exclude specific IP addresses or subnets:</h3>
+            <pre><code>.\scanner.ps1 -CIDR "192.168.1.0/24" -Exclude "192.168.1.100","192.168.1.200/30"</code></pre>
+            <p>Excludes specified IP addresses or subnets from the scan.</p>
+        </div>
+
+        <div class="example">
+            <h3>13. Use TCP SYN packets for host discovery:</h3>
+            <pre><code>.\scanner.ps1 -CIDR "192.168.1.0/24" -UseTcpSyn</code></pre>
+            <p>Uses TCP SYN packets instead of ICMP for host discovery.</p>
+        </div>
+
+        <div class="example">
+            <h3>14. Specify a network interface:</h3>
+            <pre><code>.\scanner.ps1 -CIDR "192.168.1.0/24" -NetworkInterface "Ethernet"</code></pre>
+            <p>Uses the specified network interface for scanning.</p>
+        </div>
+
+        <div class="example">
+            <h3>15. Comprehensive scan with multiple options:</h3>
+            <pre><code>.\scanner.ps1 -CIDR "192.168.1.0/24","10.0.0.0/16" -PingCount 2 -Timeout 1000 -ShowAll -ExportCSV "C:\results.csv" -ResolveDNS -TopPorts 50 -LogFile "C:\scan_log.txt" -OutputFormat "JSON" -UseTcpSyn -NetworkInterface "Wi-Fi"</code></pre>
+            <p>Performs a detailed scan with multiple CIDR ranges, custom ping settings, DNS resolution, port scanning,
+                custom output, and more.</p>
+        </div>
+
+        <h2>Script Details</h2>
+        <button id="loadScript" class="load-btn" title="Upload your ps1 script">Load Script</button>
+        <button id="toggleScript" class="toggle-btn hidden">Show Script</button>
+        <pre id="scriptContent" class="hidden"><code></code></pre>
+    </div>
+
+    <div id="customContextMenu" class="custom-context-menu">
+        <ul>
+            <li id="copyText">Copy</li>
+            <li id="searchGoogle">Search Google</li>
+            <li id="viewSource">View Source</li>
+        </ul>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <script>
+        // JavaScript code here
+        document.addEventListener('DOMContentLoaded', function () {
+            // Initialize matrix effect
+            const canvas = document.getElementById('matrix-canvas');
+            const ctx = canvas.getContext('2d');
+            let columns, drops;
+
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                initMatrix();
+            }
+
+            function initMatrix() {
+                columns = Math.floor(canvas.width / 20);
+                drops = Array(columns).fill(1);
+            }
+
+            function drawMatrix() {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.fillStyle = '#0F0';
+                ctx.font = '15px monospace';
+
+                for (let i = 0; i < drops.length; i++) {
+                    const text = String.fromCharCode(Math.random() * 128);
+                    ctx.fillText(text, i * 20, drops[i] * 20);
+
+                    if (drops[i] * 20 > canvas.height && Math.random() > 0.975) {
+                        drops[i] = 0;
+                    }
+                    drops[i]++;
+                }
+            }
+
+            function animate() {
+                drawMatrix();
+                requestAnimationFrame(animate);
+            }
+
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+            animate();
+
+            // Custom cursor
+            const cursor = document.getElementById('custom-cursor');
+            document.addEventListener('mousemove', (e) => {
+                cursor.style.left = e.clientX + 'px';
+                cursor.style.top = e.clientY + 'px';
+            });
+
+            // Theme toggle
+            const themeSwitch = document.getElementById('theme-switch');
+            const body = document.body;
+
+            themeSwitch.addEventListener('change', function () {
+                body.classList.toggle('carbon-theme');
+                if (this.checked) {
+                    initParticles();
+                } else {
+                    if (window.pJSDom && window.pJSDom[0].pJS) {
+                        window.pJSDom[0].pJS.fn.vendors.destroypJS();
+                    }
+                }
+            });
+
+            // Script loading and toggling
+            document.getElementById('loadScript').addEventListener('click', loadScript);
+            document.getElementById('toggleScript').addEventListener('click', toggleScript);
+
+            // Custom context menu
+            setupCustomContextMenu();
+
+            // Copy buttons for code examples
+            setupCopyButtons();
+        });
+
+        function initParticles() {
+            particlesJS('particles-js', {
+                particles: {
+                    number: { value: 80, density: { enable: true, value_area: 800 } },
+                    color: { value: '#4a90e2' },
+                    shape: { type: 'circle' },
+                    opacity: { value: 0.5, random: false },
+                    size: { value: 3, random: true },
+                    line_linked: { enable: true, distance: 150, color: '#4a90e2', opacity: 0.4, width: 1 },
+                    move: { enable: true, speed: 2, direction: 'none', random: false, straight: false, out_mode: 'out', bounce: false }
+                },
+                interactivity: {
+                    detect_on: 'canvas',
+                    events: {
+                        onhover: { enable: true, mode: 'grab' },
+                        onclick: { enable: true, mode: 'push' },
+                        resize: true
+                    },
+                    modes: {
+                        grab: { distance: 140, line_linked: { opacity: 1 } },
+                        push: { particles_nb: 4 }
+                    }
+                },
+                retina_detect: true
+            });
+        }
+
+        function loadScript() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.ps1';
+            input.onchange = function (e) {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const content = e.target.result;
+                    document.querySelector('#scriptContent code').textContent = content;
+                    document.getElementById('toggleScript').classList.remove('hidden');
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+
+        function toggleScript() {
+            const scriptContent = document.getElementById('scriptContent');
+            const toggleBtn = document.getElementById('toggleScript');
+            scriptContent.classList.toggle('hidden');
+            toggleBtn.textContent = scriptContent.classList.contains('hidden') ? 'Show Script' : 'Hide Script';
+        }
+
+        function setupCustomContextMenu() {
+            const menu = document.getElementById('customContextMenu');
+            document.addEventListener('contextmenu', e => {
+                e.preventDefault();
+                menu.style.display = 'block';
+                menu.style.left = `${e.clientX}px`;
+                menu.style.top = `${e.clientY}px`;
+            });
+            document.addEventListener('click', () => menu.style.display = 'none');
+
+            document.getElementById('copyText').addEventListener('click', () => {
+                const selection = window.getSelection().toString();
+                if (selection) navigator.clipboard.writeText(selection);
+            });
+            document.getElementById('searchGoogle').addEventListener('click', () => {
+                const selection = window.getSelection().toString();
+                if (selection) window.open(`https://www.google.com/search?q=${encodeURIComponent(selection)}`, '_blank');
+            });
+            document.getElementById('viewSource').addEventListener('click', () => {
+                const sourceWindow = window.open('', '_blank');
+                sourceWindow.document.write('<pre>' + document.documentElement.outerHTML.replace(/[<>]/g, c => ({ '<': '&lt;', '>': '&gt;' })[c]) + '</pre>');
+            });
+        }
+
+        function setupCopyButtons() {
+            document.querySelectorAll('.example').forEach(example => {
+                const codeBlock = example.querySelector('code');
+                const copyBtn = document.createElement('button');
+                copyBtn.textContent = 'Copy';
+                copyBtn.className = 'copy-btn';
+                copyBtn.addEventListener('click', () => {
+                    navigator.clipboard.writeText(codeBlock.textContent)
+                        .then(() => {
+                            copyBtn.textContent = 'Copied!';
+                            setTimeout(() => copyBtn.textContent = 'Copy', 2000);
+                        });
+                });
+                example.appendChild(copyBtn);
+            });
+        }
+    </script>
+</body>
+
+</html>
