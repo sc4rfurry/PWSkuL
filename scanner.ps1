@@ -287,37 +287,91 @@ function Export-Results {
     }
 }
 
-Write-Host "`n==== Network Scanner ====" -ForegroundColor Cyan
-Write-Host "Scanning CIDR(s): $($CIDR -join ', ')" -ForegroundColor Green
-Write-Host "Ping Count: $PingCount" -ForegroundColor Green
-Write-Host "Timeout: $Timeout ms" -ForegroundColor Green
-Write-Host "Show All Hosts: $ShowAll" -ForegroundColor Green
-Write-Host "Host Throttle Limit: $HostThrottleLimit" -ForegroundColor Green
-Write-Host "Resolve DNS: $ResolveDNS" -ForegroundColor Green
+function Write-ColoredText {
+    param (
+        [string]$Text,
+        [string]$ForegroundColor = "White",
+        [string]$BackgroundColor = "Black"
+    )
+    Write-Host $Text -ForegroundColor $ForegroundColor -BackgroundColor $BackgroundColor -NoNewline
+}
+
+function Write-CenteredText {
+    param (
+        [string]$Text,
+        [string]$ForegroundColor = "White",
+        [string]$BackgroundColor = "Black"
+    )
+    $windowWidth = $Host.UI.RawUI.WindowSize.Width
+    $padding = [math]::Max(0, ($windowWidth - $Text.Length) / 2)
+    Write-Host (" " * [math]::Floor($padding)) -NoNewline
+    Write-ColoredText -Text $Text -ForegroundColor $ForegroundColor -BackgroundColor $BackgroundColor
+    Write-Host
+}
+
+function Write-Banner {
+    param ([string]$Text)
+    $windowWidth = $Host.UI.RawUI.WindowSize.Width
+    $bannerWidth = [math]::Min(80, $windowWidth)
+    $padding = [math]::Max(0, ($windowWidth - $bannerWidth) / 2)
+    
+    Write-Host
+    Write-Host (" " * [math]::Floor($padding)) -NoNewline
+    Write-ColoredText -Text ("=" * $bannerWidth) -ForegroundColor Cyan
+    Write-Host
+    Write-CenteredText -Text $Text -ForegroundColor Cyan
+    Write-Host (" " * [math]::Floor($padding)) -NoNewline
+    Write-ColoredText -Text ("=" * $bannerWidth) -ForegroundColor Cyan
+    Write-Host
+}
+
+function Write-ProgressBar {
+    param (
+        [int]$PercentComplete,
+        [int]$Width = 50
+    )
+    $completed = [math]::Round($PercentComplete / 100 * $Width)
+    $remaining = $Width - $completed
+    $bar = "[" + ("=" * $completed) + (" " * $remaining) + "]"
+    Write-Host "`r$bar $PercentComplete%" -NoNewline
+}
+
+Write-Banner "Network Scanner"
+
+Write-CenteredText "Scan Configuration" -ForegroundColor Yellow
+Write-Host "CIDR(s):        " -NoNewline; Write-ColoredText ("" + ($CIDR -join ', ') + "  ") -ForegroundColor Green
+Write-Host "Ping Count:     " -NoNewline; Write-ColoredText ("" + $PingCount + "  ") -ForegroundColor Green
+Write-Host "Timeout:        " -NoNewline; Write-ColoredText ("" + "$Timeout ms" + "  ") -ForegroundColor Green
+Write-Host "Show All Hosts: " -NoNewline; Write-ColoredText ("" + $ShowAll + "  ") -ForegroundColor Green
+Write-Host "Host Throttle Limit: " -NoNewline; Write-ColoredText ("" + $HostThrottleLimit + "  ") -ForegroundColor Green
+Write-Host "Resolve DNS:    " -NoNewline; Write-ColoredText ("" + $ResolveDNS + "  ") -ForegroundColor Green
 if ($Ports) {
-    Write-Host "Ports to scan: $($Ports -join ', ')" -ForegroundColor Green
-    Write-Host "Port Throttle Limit: $PortThrottleLimit" -ForegroundColor Green
+    Write-Host "Ports to scan:       " -NoNewline; Write-ColoredText ("" + ($Ports -join ', ') + "  ") -ForegroundColor Green
+    Write-Host "Port Throttle Limit: " -NoNewline; Write-ColoredText ("" + $PortThrottleLimit + "  ") -ForegroundColor Green
 }
 else {
-    Write-Host "Port scanning: Disabled" -ForegroundColor Green
+    Write-Host "Port scanning:   " -NoNewline; Write-ColoredText "Disabled    " -ForegroundColor Green
 }
-Write-Host "Output Format: $OutputFormat" -ForegroundColor Green
+Write-Host "Output Format:       " -NoNewline; Write-ColoredText ("" + $OutputFormat + "  ") -ForegroundColor Green
 if ($Exclude) {
-    Write-Host "Excluded IPs/Subnets: $($Exclude -join ', ')" -ForegroundColor Green
+    Write-Host "Excluded IPs/Subnets:" -NoNewline; Write-ColoredText ("" + ($Exclude -join ', ') + "  ") -ForegroundColor Green
 }
-Write-Host "Use TCP SYN: $UseTcpSyn" -ForegroundColor Green
+Write-Host "Use TCP SYN:     " -NoNewline; Write-ColoredText ("" + $UseTcpSyn + "  ") -ForegroundColor Green
 if ($NetworkInterface) {
-    Write-Host "Network Interface: $NetworkInterface" -ForegroundColor Green
+    Write-Host "Network Interface:   " -NoNewline; Write-ColoredText ("" + $NetworkInterface + "  ") -ForegroundColor Green
 }
-Write-Host "==============================`n" -ForegroundColor Cyan
+Write-Host
 
 $totalHosts = 0
 $aliveHosts = 0
 
 try {
-    # Wrap the main scanning logic in a try-catch block
+    # Initialize variables for progress tracking
+    $totalScanned = 0
+    $totalScannedPorts = 0
+
     $results = foreach ($cidrRange in $CIDR) {
-        Write-Host "Scanning range: $cidrRange" -ForegroundColor Yellow
+        Write-CenteredText "Scanning range: $cidrRange" -ForegroundColor Yellow
         $ipAddresses = Get-IPRange -CIDR $cidrRange
         $totalHosts += $ipAddresses.Count
 
@@ -326,7 +380,7 @@ try {
 
         $remainingHosts = $ipAddresses
 
-        Write-Host "Phase 1: Host Discovery" -ForegroundColor Magenta
+        Write-CenteredText "Phase 1: Host Discovery" -ForegroundColor Magenta
         $hostResults = $remainingHosts | ForEach-Object -ThrottleLimit $HostThrottleLimit -Parallel {
             $ip = $_
             $timeoutSeconds = [Math]::Max(1, $using:Timeout / 1000)
@@ -346,13 +400,9 @@ try {
             }
 
             # Report progress
-            $progressParams = @{
-                Activity        = "Host Discovery"
-                Status          = "Scanning $ip"
-                PercentComplete = (([array]::IndexOf($using:ipAddresses, $ip) + 1) / $using:ipAddresses.Count * 100)
-                Id              = 1  # Assign a specific ID for the host scanning progress bar
-            }
-            Write-Progress @progressParams
+            $totalScanned = [Threading.Interlocked]::Increment([ref]$using:totalScanned)
+            $percentComplete = [math]::Round(($totalScanned / $using:totalHosts) * 100, 2)
+            Write-Progress -Id 1 -Activity "Host Discovery" -Status "Scanning $ip" -PercentComplete $percentComplete
 
             [PSCustomObject]@{
                 IPAddress = $ip
@@ -375,7 +425,7 @@ try {
         $aliveHosts += ($hostResults | Where-Object { $_.IsAlive }).Count
 
         if ($Ports) {
-            Write-Host "`nPhase 2: Port Scanning" -ForegroundColor Magenta
+            Write-CenteredText "Phase 2: Port Scanning" -ForegroundColor Magenta
             $portResults = $hostResults | Where-Object { $_.IsAlive } | ForEach-Object -ThrottleLimit $PortThrottleLimit -Parallel {
                 $ip = $_.IPAddress
                 $openPorts = @()
@@ -409,15 +459,9 @@ try {
                     }
 
                     # Report progress
-                    # Update progress bar with a specific ID for port scanning
-                    $progressParams = @{
-                        Activity        = "Port Scanning"
-                        Status          = "Scanning $ip : Port $port"
-                        PercentComplete = (([array]::IndexOf($using:Ports, $port) + 1) / $using:Ports.Count * 100)
-                        Id              = 2  # Assign a specific ID for the port scanning progress bar
-                    }
-                    Write-Progress @progressParams
-
+                    $scannedPorts = [Threading.Interlocked]::Increment([ref]$using:totalScannedPorts)
+                    $percentComplete = [math]::Round(($scannedPorts / ($using:Ports.Count * $using:aliveHosts)) * 100, 2)
+                    Write-Progress -Id 2 -Activity "Port Scanning" -Status "Scanning $ip : Port $port" -PercentComplete $percentComplete
                 }
                 
                 [PSCustomObject]@{
@@ -449,15 +493,15 @@ try {
 
     $stopwatch.Stop()
 
-    Write-Host "`n==== Scan Summary ====" -ForegroundColor Cyan
-    Write-Host "Total hosts scanned: $totalHosts" -ForegroundColor Green
-    Write-Host "Alive hosts found: $aliveHosts" -ForegroundColor Green
-    Write-Host "Scan duration: $($stopwatch.Elapsed.ToString())" -ForegroundColor Green
+    Write-Banner "Scan Summary"
+    Write-Host "Total hosts scanned: " -NoNewline; Write-ColoredText ("" + $totalHosts + "  ") -ForegroundColor Green
+    Write-Host "Alive hosts found:   " -NoNewline; Write-ColoredText ("" + $aliveHosts + "  ") -ForegroundColor Green
+    Write-Host "Scan duration:       " -NoNewline; Write-ColoredText ("" + $stopwatch.Elapsed.ToString() + "  ") -ForegroundColor Green
     if ($Ports) {
         $totalOpenPorts = ($results | Where-Object { $_.IsAlive } | ForEach-Object { $_.OpenPorts.Count } | Measure-Object -Sum).Sum
-        Write-Host "Total open ports found: $totalOpenPorts" -ForegroundColor Green
+        Write-Host "Total open ports:    " -NoNewline; Write-ColoredText ("" + $totalOpenPorts + "  ") -ForegroundColor Green
     }
-    Write-Host "Output Format: $OutputFormat" -ForegroundColor Green
+    Write-Host "Output Format:       " -NoNewline; Write-ColoredText ("" + $OutputFormat + "  ") -ForegroundColor Green
 
     if ($results.Count -gt 0) {
         if ($ExportCSV) {
@@ -484,6 +528,6 @@ catch {
 }
 finally {
     # Ensure that the progress bar is cleared even if an error occurs
-    Write-Progress -Activity "Scanning hosts" -Completed
-    Write-Progress -Activity "Scanning ports" -Completed
+    Write-Progress -Activity "Host Discovery" -Completed -Id 1
+    Write-Progress -Activity "Port Scanning" -Completed -Id 2
 }
